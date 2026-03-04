@@ -36,6 +36,7 @@
         #status { 
             margin: 15px 0; font-weight: bold; color: #d97706; 
             padding: 10px; background: #fef3c7; border-radius: 8px;
+            font-size: 0.9rem;
         }
         
         /* Scanned Pages Gallery */
@@ -91,7 +92,6 @@
 
     // 1. Initialize the Computer Vision Engine
     function onOpenCvReady() {
-        // We wait a tiny bit to ensure OpenCV is fully attached to the browser window
         setTimeout(() => {
             scanner = new jscanify();
             statusEl.innerText = "✅ Engine Ready! You can scan now.";
@@ -107,7 +107,7 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        statusEl.innerText = "⚙️ Finding document edges & cropping...";
+        statusEl.innerText = "⚙️ Analyzing and processing image...";
         statusEl.style.color = "#2563eb";
         statusEl.style.background = "#dbeafe";
         
@@ -133,29 +133,55 @@
         img.src = URL.createObjectURL(file);
     });
 
-    // 3. The Core Magic: Auto-Crop and Filter
+    // 3. The Core Magic: Auto-Crop and Filter (WITH FALLBACK)
     function processImage() {
+        let finalCanvas;
+        let successfullyCropped = true;
+
         try {
-            // A. AUTO-CROP: Find the paper and flatten the perspective
-            let extractedCanvas = scanner.extractPaper(processingCanvas, processingCanvas.width, processingCanvas.height);
+            // A. Try to AUTO-CROP: Find the paper and flatten the perspective
+            finalCanvas = scanner.extractPaper(processingCanvas, processingCanvas.width, processingCanvas.height);
             
+            // If jscanify fails quietly and returns an empty canvas, trigger the fallback
+            if (!finalCanvas || finalCanvas.width === 0) {
+                throw new Error("Could not detect paper edges.");
+            }
+        } catch (error) {
+            console.warn("Auto-crop failed, falling back to full image.");
+            successfullyCropped = false;
+            
+            // FALLBACK: Use the full uncropped image instead
+            finalCanvas = document.createElement('canvas');
+            finalCanvas.width = processingCanvas.width;
+            finalCanvas.height = processingCanvas.height;
+            finalCanvas.getContext('2d').drawImage(processingCanvas, 0, 0);
+        }
+
+        try {
             // B. FILTER: Apply "CamScanner" high-contrast B&W effect
-            extractedCanvas = applyScannerFilter(extractedCanvas);
+            finalCanvas = applyScannerFilter(finalCanvas);
             
             // C. SAVE: Convert the final canvas to a high-quality JPEG
-            const base64Img = extractedCanvas.toDataURL('image/jpeg', 0.9);
+            const base64Img = finalCanvas.toDataURL('image/jpeg', 0.9);
             scannedPages.push(base64Img);
             
             // D. UPDATE UI
             updateGallery(base64Img);
-            statusEl.innerText = `✅ Page ${scannedPages.length} scanned successfully!`;
-            statusEl.style.color = "#059669";
-            statusEl.style.background = "#d1fae5";
             pdfBtn.style.display = 'block'; 
 
-        } catch (error) {
-            console.error(error);
-            statusEl.innerText = "❌ Auto-crop failed. Please make sure the document is on a dark/contrasting background.";
+            if (successfullyCropped) {
+                statusEl.innerText = `✅ Page ${scannedPages.length} scanned and auto-cropped!`;
+                statusEl.style.color = "#059669";
+                statusEl.style.background = "#d1fae5";
+            } else {
+                statusEl.innerText = `⚠️ Page ${scannedPages.length} added. Edges not found - try a darker table next time!`;
+                statusEl.style.color = "#d97706";
+                statusEl.style.background = "#fef3c7";
+            }
+
+        } catch (filterError) {
+            console.error(filterError);
+            statusEl.innerText = "❌ Processing failed entirely.";
             statusEl.style.color = "#dc2626";
             statusEl.style.background = "#fee2e2";
         }
@@ -198,7 +224,7 @@
         statusEl.innerText = "⏳ Generating PDF...";
         
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, Millimeters, A4 Paper Size
+        const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, Millimeters, A4
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = doc.internal.pageSize.getHeight();
 
