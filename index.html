@@ -3,108 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imposter Game - 100k Words</title>
+    <title>🕵️ Imposter Party!</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #1a1a2e; color: #e94560; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: #16213e; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        input { padding: 10px; border-radius: 5px; border: none; width: 70%; margin-bottom: 10px; }
-        button { padding: 10px 20px; cursor: pointer; background: #e94560; color: white; border: none; border-radius: 5px; font-weight: bold; margin: 5px; }
-        .card { background: #0f3460; border: 3px dashed #e94560; border-radius: 15px; padding: 50px; margin: 20px auto; cursor: pointer; min-height: 50px; }
-        #word-display { font-size: 28px; font-weight: bold; color: #fff; display: none; }
-        #timer { font-size: 40px; color: #00d2ff; margin: 20px; }
-        .player-list { text-align: left; background: #0f3460; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: #00d2ff; }
-        #status { font-size: 12px; color: #888; }
+        :root { --primary: #FFD700; --secondary: #FF4757; --bg: #2F3542; --accent: #2ED573; }
+        body { font-family: 'Comic Sans MS', cursive, sans-serif; background: var(--bg); color: white; text-align: center; padding: 20px; }
+        
+        .container { max-width: 450px; margin: auto; background: #3E4451; padding: 30px; border-radius: 30px; border: 8px solid #1E2124; box-shadow: 10px 10px 0px #000; }
+        
+        h1 { font-size: 3rem; color: var(--primary); text-shadow: 4px 4px 0px #000; margin-bottom: 10px; }
+        
+        input { padding: 15px; border-radius: 15px; border: 4px solid var(--primary); width: 80%; font-size: 18px; margin-bottom: 10px; outline: none; }
+        
+        button { padding: 15px 25px; cursor: pointer; background: var(--secondary); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 18px; box-shadow: 0 6px 0 #b33939; transition: 0.1s; margin: 10px; }
+        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #b33939; }
+        button:disabled { background: #747d8c; box-shadow: 0 6px 0 #2f3542; }
+
+        .card { background: #57606f; border: 6px dashed var(--primary); border-radius: 25px; padding: 60px 20px; margin: 20px auto; cursor: pointer; animation: float 3s ease-in-out infinite; }
+        
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        #word-display { font-size: 32px; font-weight: bold; color: var(--accent); display: none; text-shadow: 2px 2px 0 #000; }
+        
+        #timer { font-size: 80px; color: var(--secondary); text-shadow: 5px 5px 0px #000; margin: 10px; font-weight: 900; }
+        
+        .speaker-box { background: var(--primary); color: #000; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 22px; margin-bottom: 20px; border: 4px solid #000; }
+        
+        .player-chip { display: inline-block; background: #747d8c; padding: 5px 15px; border-radius: 20px; margin: 5px; border: 2px solid #000; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🕵️ Imposter Elite</h1>
-    <div id="status">Loading huge word list...</div>
+    <h1>IMPOSTER</h1>
+    <p id="status">Wait... sharpening pencils...</p>
 
-    <!-- STEP 1: PLAYER ENTRY -->
+    <!-- STEP 1 -->
     <div id="setup-screen">
-        <div class="player-list" id="display-names">No players added.</div>
-        <input type="text" id="nameInput" placeholder="Enter Player Name">
-        <button onclick="addPlayer()">Add</button>
+        <div id="name-list" style="margin-bottom: 20px;"></div>
+        <input type="text" id="nameInput" placeholder="Player Name...">
+        <button onclick="addPlayer()">ADD +</button>
         <br><br>
-        <label>Discussion Time (sec): </label>
-        <input type="number" id="timerInput" value="60" style="width: 50px;">
-        <br>
-        <button id="startBtn" onclick="startGame()" style="background: #444; width: 100%;" disabled>WAITING FOR WORDS...</button>
+        <button id="startBtn" onclick="startGame()" disabled>LOADING WORDS...</button>
     </div>
 
-    <!-- STEP 2: ROLE REVEAL -->
+    <!-- STEP 2 -->
     <div id="reveal-screen" style="display:none;">
-        <h2 id="turn-name"></h2>
+        <h2 id="turn-name" style="color:var(--primary)"></h2>
         <div class="card" onclick="toggleSecret()">
-            <div id="tap-msg">TAP TO REVEAL</div>
+            <div id="tap-msg">Tap to see your secret!</div>
             <div id="word-display">WORD</div>
         </div>
-        <button onclick="nextPlayer()">DONE, NEXT PLAYER</button>
+        <button onclick="nextPlayer()">I'M READY! NEXT Player →</button>
     </div>
 
-    <!-- STEP 3: DISCUSSION -->
+    <!-- STEP 3 -->
     <div id="game-screen" style="display:none;">
-        <h2>Discuss! Find the Imposter.</h2>
+        <div class="speaker-box">📢 First Speaker: <span id="first-speaker">?</span></div>
         <div id="timer">60</div>
-        <button onclick="revealImposter()" style="background: #533483;">REVEAL NOW</button>
+        <p>Find the Imposter before time runs out!</p>
+        <button onclick="revealImposter()" style="background: var(--accent); box-shadow: 0 6px 0 #218c74;">REVEAL NOW!</button>
     </div>
 
-    <!-- STEP 4: FINAL REVEAL -->
+    <!-- STEP 4 -->
     <div id="final-screen" style="display:none;">
         <h2 id="winner-msg"></h2>
-        <button onclick="location.reload()">PLAY AGAIN</button>
+        <button onclick="location.reload()">PLAY AGAIN 🔄</button>
     </div>
 </div>
 
 <script>
     let players = [];
-    let wordList = ["APPLE", "BANANA", "CHERRY"]; // Tiny fallback
-    let gameState = { imposterName: "", secretWord: "", currentIdx: 0, timer: 60 };
+    let wordList = [];
+    let gameState = { imposter: "", word: "", index: 0 };
 
-    // FETCHING 100,000+ WORDS
-    // This URL points to a massive English dictionary (2.2MB text file)
-    fetch('https://raw.githubusercontent.com')
-        .then(r => r.text())
-        .then(text => {
-            const allWords = text.split('\r\n');
-            // Filter for common length words (5-9 letters) so they are actually guessable
-            wordList = allWords.filter(w => w.length >= 5 && w.length <= 9);
-            
-            document.getElementById('status').innerText = `✅ ${wordList.length.toLocaleString()} words loaded!`;
-            const btn = document.getElementById('startBtn');
+    // Fetching words via reliable CDN (English nouns/common words)
+    fetch('https://cdn.jsdelivr.net')
+        .then(r => r.json())
+        .then(data => {
+            wordList = data.filter(w => w.length > 4 && w.length < 9);
+            document.getElementById('status').innerText = "✅ Ready for Fun!";
+            let btn = document.getElementById('startBtn');
             btn.disabled = false;
-            btn.style.background = "#0fcc7c";
-            btn.innerText = "START GAME";
+            btn.innerText = "START PARTY! 🎉";
         })
-        .catch(err => {
-            document.getElementById('status').innerText = "❌ Failed to load 100k list. Using backup.";
-            console.error(err);
+        .catch(() => {
+            wordList = ["PIZZA", "ROCKET", "DRAGON", "BANANA", "ZOMBIE", "GUITAR"];
+            document.getElementById('status').innerText = "Offline Mode Active";
         });
 
     function addPlayer() {
-        const input = document.getElementById('nameInput');
-        const val = input.value.trim();
-        if (val) {
-            players.push(val);
-            document.getElementById('display-names').innerText = "Players: " + players.join(", ");
+        let input = document.getElementById('nameInput');
+        if(input.value.trim()){
+            players.push(input.value.trim());
+            let chip = document.createElement('span');
+            chip.className = 'player-chip';
+            chip.innerText = input.value.trim();
+            document.getElementById('name-list').appendChild(chip);
             input.value = "";
         }
     }
 
     function startGame() {
-        if (players.length < 3) return alert("Need at least 3 players!");
+        if(players.length < 3) return alert("You need at least 3 friends to play!");
         
-        const imposterIdx = Math.floor(Math.random() * players.length);
-        gameState.imposterName = players[imposterIdx];
-        
-        // Pick random word from the 100k list
-        const randWord = wordList[Math.floor(Math.random() * wordList.length)];
-        gameState.secretWord = randWord.toUpperCase();
-        
-        gameState.currentIdx = 0;
-        gameState.timer = document.getElementById('timerInput').value;
+        gameState.imposter = players[Math.floor(Math.random() * players.length)];
+        gameState.word = wordList[Math.floor(Math.random() * wordList.length)].toUpperCase();
+        gameState.index = 0;
 
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('reveal-screen').style.display = 'block';
@@ -112,18 +116,18 @@
     }
 
     function updateTurn() {
-        document.getElementById('turn-name').innerText = `${players[gameState.currentIdx]}, check your role:`;
+        document.getElementById('turn-name').innerText = "HEY " + players[gameState.index].toUpperCase() + "!";
         document.getElementById('word-display').style.display = 'none';
         document.getElementById('tap-msg').style.display = 'block';
     }
 
     function toggleSecret() {
-        const display = document.getElementById('word-display');
-        const msg = document.getElementById('tap-msg');
-        const isImposter = players[gameState.currentIdx] === gameState.imposterName;
+        let display = document.getElementById('word-display');
+        let msg = document.getElementById('tap-msg');
+        let isImposter = players[gameState.index] === gameState.imposter;
 
-        if (display.style.display === 'none') {
-            display.innerText = isImposter ? "🕵️ YOU ARE THE IMPOSTER" : "WORD: " + gameState.secretWord;
+        if(display.style.display === 'none'){
+            display.innerText = isImposter ? "🕵️ YOU ARE THE IMPOSTER!" : "WORD: " + gameState.word;
             display.style.display = 'block';
             msg.style.display = 'none';
         } else {
@@ -133,8 +137,8 @@
     }
 
     function nextPlayer() {
-        gameState.currentIdx++;
-        if (gameState.currentIdx >= players.length) {
+        gameState.index++;
+        if(gameState.index >= players.length) {
             startDiscussion();
         } else {
             updateTurn();
@@ -144,14 +148,16 @@
     function startDiscussion() {
         document.getElementById('reveal-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
-        let timeLeft = gameState.timer;
-        const timerDiv = document.getElementById('timer');
         
-        const countdown = setInterval(() => {
+        // Randomly pick the first speaker
+        document.getElementById('first-speaker').innerText = players[Math.floor(Math.random() * players.length)];
+        
+        let timeLeft = 60;
+        let t = setInterval(() => {
             timeLeft--;
-            timerDiv.innerText = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(countdown);
+            document.getElementById('timer').innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(t);
                 revealImposter();
             }
         }, 1000);
@@ -161,8 +167,9 @@
         document.getElementById('game-screen').style.display = 'none';
         document.getElementById('final-screen').style.display = 'block';
         document.getElementById('winner-msg').innerHTML = 
-            `The Imposter was:<br><span style="font-size:40px; color:#fff;">${gameState.imposterName}</span><br><br>` +
-            `The secret word was: <b style="color:#00d2ff">${gameState.secretWord}</b>`;
+            `<div style="font-size:24px">THE SCARY IMPOSTER WAS:</div>` + 
+            `<div style="font-size:50px; color:var(--primary); margin:20px;">${gameState.imposter}</div>` +
+            `<div style="font-size:20px">SECRET WORD: ${gameState.word}</div>`;
     }
 </script>
 
