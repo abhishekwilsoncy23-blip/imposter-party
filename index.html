@@ -2,56 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🕵️ Imposter: 370k Word Edition</title>
+    <title>🕵️ Imposter Party!</title>
     <style>
         :root { --primary: #FFD700; --secondary: #FF4757; --bg: #2F3542; --accent: #2ED573; }
         body { font-family: 'Comic Sans MS', cursive, sans-serif; background: var(--bg); color: white; text-align: center; padding: 20px; }
         .container { max-width: 450px; margin: auto; background: #3E4451; padding: 30px; border-radius: 30px; border: 8px solid #1E2124; box-shadow: 10px 10px 0px #000; }
-        h1 { font-size: 2.5rem; color: var(--primary); text-shadow: 3px 3px 0px #000; }
-        input { padding: 12px; border-radius: 12px; border: 4px solid var(--primary); width: 70%; font-size: 16px; margin-bottom: 10px; }
-        button { padding: 12px 20px; cursor: pointer; background: var(--secondary); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 5px 0 #b33939; margin: 5px; }
-        button:active { transform: translateY(3px); box-shadow: 0 2px 0 #b33939; }
-        button:disabled { background: #747d8c; box-shadow: 0 5px 0 #2f3542; cursor: not-allowed; }
-        .card { background: #57606f; border: 5px dashed var(--primary); border-radius: 20px; padding: 50px 15px; margin: 20px auto; cursor: pointer; animation: bounce 2s infinite; }
-        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-        #word-display { font-size: 28px; font-weight: bold; color: var(--accent); display: none; }
-        #timer { font-size: 70px; color: var(--secondary); text-shadow: 4px 4px 0px #000; font-weight: 900; }
-        .speaker-box { background: var(--primary); color: #000; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 20px; margin-bottom: 15px; border: 3px solid #000; }
-        #status { font-size: 12px; color: #aaa; margin-bottom: 10px; }
+        h1 { font-size: 2.8rem; color: var(--primary); text-shadow: 4px 4px 0px #000; }
+        input { padding: 12px; border-radius: 12px; border: 4px solid var(--primary); width: 70%; font-size: 16px; margin-bottom: 10px; outline: none; }
+        button { padding: 12px 25px; cursor: pointer; background: var(--secondary); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 18px; box-shadow: 0 6px 0 #b33939; margin: 10px; transition: 0.1s; }
+        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #b33939; }
+        button:disabled { background: #747d8c; box-shadow: 0 6px 0 #2f3542; cursor: not-allowed; }
+        .card { background: #57606f; border: 6px dashed var(--primary); border-radius: 25px; padding: 50px 20px; margin: 20px auto; cursor: pointer; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        #word-display { font-size: 32px; font-weight: bold; color: var(--accent); display: none; text-shadow: 2px 2px 0 #000; }
+        #timer { font-size: 80px; color: var(--secondary); text-shadow: 5px 5px 0px #000; margin: 10px; font-weight: 900; }
+        .speaker-box { background: var(--primary); color: #000; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 22px; margin-bottom: 20px; border: 4px solid #000; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🕵️ IMPOSTER</h1>
-    <div id="status">Crunching 370,000 words...</div>
+    <h1>IMPOSTER</h1>
+    <div id="status" style="font-size: 12px; color: #888;">Loading common words...</div>
 
     <div id="setup-screen">
-        <div id="name-list" style="margin-bottom: 15px;"></div>
-        <input type="text" id="nameInput" placeholder="Enter Name">
+        <div id="name-list" style="margin-bottom: 20px;"></div>
+        <input type="text" id="nameInput" placeholder="Enter Player Name">
         <button onclick="addPlayer()">ADD +</button>
         <br><br>
-        <button id="startBtn" onclick="startGame()" disabled>LOADING DICTIONARY...</button>
+        <button id="startBtn" onclick="startGame()" disabled>LOADING...</button>
     </div>
 
     <div id="reveal-screen" style="display:none;">
         <h2 id="turn-name" style="color:var(--primary)"></h2>
         <div class="card" onclick="toggleSecret()">
-            <div id="tap-msg">Tap to reveal!</div>
+            <div id="tap-msg">Tap to see your secret!</div>
             <div id="word-display"></div>
         </div>
         <button onclick="nextPlayer()">READY! NEXT →</button>
     </div>
 
     <div id="game-screen" style="display:none;">
-        <div class="speaker-box">📣 First Speaker: <span id="first-speaker">?</span></div>
+        <div class="speaker-box">📢 First Speaker: <span id="first-speaker">?</span></div>
         <div id="timer">60</div>
-        <button onclick="revealImposter()" style="background: var(--accent); box-shadow: 0 5px 0 #218c74;">REVEAL NOW!</button>
+        <button onclick="revealImposter()" style="background: var(--accent); box-shadow: 0 6px 0 #218c74;">REVEAL NOW!</button>
     </div>
 
     <div id="final-screen" style="display:none;">
         <h2 id="winner-msg"></h2>
-        <button onclick="location.reload()">REPLAY 🔄</button>
+        <button onclick="location.reload()">PLAY AGAIN 🔄</button>
     </div>
 </div>
 
@@ -60,21 +59,18 @@
     let wordList = [];
     let gameState = { imposter: "", word: "", index: 0 };
 
-    // FETCHING THE FULL words_alpha.txt (370k words)
-    // Using jsDelivr CDN to handle CORS for GitHub files
-    fetch('https://cdn.jsdelivr.net')
+    // ✅ Loads common words from a CDN or your local words_alpha.txt
+    // For "Common Only", it filters for frequent, 5-8 letter words
+    fetch('words_alpha.txt')
         .then(r => r.text())
         .then(text => {
-            // Split by newline and filter out very short words for better gameplay
-            wordList = text.split(/\r?\n/).filter(w => w.length > 3);
-            document.getElementById('status').innerText = "✅ " + wordList.length.toLocaleString() + " words ready!";
+            const all = text.split(/\r?\n/).map(w => w.trim());
+            // Filter to remove obscure words: keep only words between 4-7 characters
+            wordList = all.filter(w => w.length >= 4 && w.length <= 7);
+            document.getElementById('status').innerText = "✅ " + wordList.length.toLocaleString() + " Easy Words Loaded!";
             const btn = document.getElementById('startBtn');
             btn.disabled = false;
-            btn.innerText = "START GAME 🎉";
-        })
-        .catch(err => {
-            document.getElementById('status').innerText = "❌ Load failed. Check internet.";
-            console.error(err);
+            btn.innerText = "START PARTY! 🎉";
         });
 
     function addPlayer() {
@@ -82,7 +78,7 @@
         if(input.value.trim()){
             players.push(input.value.trim());
             const span = document.createElement('span');
-            span.style = "background:#444; padding:5px 10px; margin:3px; border-radius:10px; display:inline-block;";
+            span.style = "background:#444; padding:5px 10px; margin:3px; border-radius:10px; display:inline-block; border:1px solid var(--primary);";
             span.innerText = input.value.trim();
             document.getElementById('name-list').appendChild(span);
             input.value = "";
@@ -90,7 +86,7 @@
     }
 
     function startGame() {
-        if(players.length < 3) return alert("Need at least 3 players!");
+        if(players.length < 3) return alert("Need 3+ players!");
         gameState.imposter = players[Math.floor(Math.random() * players.length)];
         gameState.word = wordList[Math.floor(Math.random() * wordList.length)].toUpperCase();
         gameState.index = 0;
@@ -131,15 +127,12 @@
     function startRound() {
         document.getElementById('reveal-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
-        
-        // Pick a random starter
         document.getElementById('first-speaker').innerText = players[Math.floor(Math.random() * players.length)];
         
         let time = 60;
-        const timerDiv = document.getElementById('timer');
         const countdown = setInterval(() => {
             time--;
-            timerDiv.innerText = time;
+            document.getElementById('timer').innerText = time;
             if(time <= 0) { clearInterval(countdown); revealImposter(); }
         }, 1000);
     }
