@@ -4,32 +4,50 @@
     <meta charset="UTF-8">
     <title>🕵️ Imposter Party!</title>
     <style>
-        :root { --primary: #FFD700; --secondary: #FF4757; --bg: #2F3542; --accent: #2ED573; }
+        :root { --primary: #FFD700; --secondary: #FF4757; --bg: #2F3542; --accent: #2ED573; --blue: #1E90FF; }
         body { font-family: 'Comic Sans MS', cursive, sans-serif; background: var(--bg); color: white; text-align: center; padding: 20px; }
         .container { max-width: 450px; margin: auto; background: #3E4451; padding: 30px; border-radius: 30px; border: 8px solid #1E2124; box-shadow: 10px 10px 0px #000; }
-        h1 { font-size: 2.8rem; color: var(--primary); text-shadow: 4px 4px 0px #000; }
-        input { padding: 12px; border-radius: 12px; border: 4px solid var(--primary); width: 70%; font-size: 16px; margin-bottom: 10px; outline: none; }
+        h1 { font-size: 2.8rem; color: var(--primary); text-shadow: 4px 4px 0px #000; margin-bottom: 5px; }
+        .subtitle { color: #aaa; margin-bottom: 20px; font-size: 14px; }
+        
+        input { padding: 12px; border-radius: 12px; border: 4px solid var(--primary); width: 70%; font-size: 16px; margin-bottom: 10px; outline: none; text-align: center; }
+        .timer-input { width: 30%; border-color: var(--secondary); margin-top: 15px; }
+        
         button { padding: 12px 25px; cursor: pointer; background: var(--secondary); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 18px; box-shadow: 0 6px 0 #b33939; margin: 10px; transition: 0.1s; }
         button:active { transform: translateY(4px); box-shadow: 0 2px 0 #b33939; }
         button:disabled { background: #747d8c; box-shadow: 0 6px 0 #2f3542; cursor: not-allowed; }
+        .btn-blue { background: var(--blue); box-shadow: 0 6px 0 #095bb3; }
+        .btn-blue:active { box-shadow: 0 2px 0 #095bb3; }
+        .btn-accent { background: var(--accent); box-shadow: 0 6px 0 #218c74; }
+        .btn-accent:active { box-shadow: 0 2px 0 #218c74; }
+        
         .card { background: #57606f; border: 6px dashed var(--primary); border-radius: 25px; padding: 50px 20px; margin: 20px auto; cursor: pointer; animation: float 3s ease-in-out infinite; }
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         #word-display { font-size: 32px; font-weight: bold; color: var(--accent); display: none; text-shadow: 2px 2px 0 #000; }
-        #timer { font-size: 80px; color: var(--secondary); text-shadow: 5px 5px 0px #000; margin: 10px; font-weight: 900; }
+        
+        #timer { font-size: 60px; color: var(--secondary); text-shadow: 4px 4px 0px #000; margin: 10px; font-weight: 900; }
         .speaker-box { background: var(--primary); color: #000; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 22px; margin-bottom: 20px; border: 4px solid #000; }
+        
+        .player-tag { background: #444; padding: 8px 12px; margin: 4px; border-radius: 10px; display: inline-block; border: 2px solid var(--primary); font-weight: bold; }
+        .score { color: var(--accent); margin-left: 5px; font-size: 1.1em; text-shadow: 1px 1px 0 #000; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>IMPOSTER</h1>
-    <div id="status" style="font-size: 12px; color: #888;">Loading common words...</div>
+    <div class="subtitle" id="status">Loading words...</div>
 
     <div id="setup-screen">
         <div id="name-list" style="margin-bottom: 20px;"></div>
         <input type="text" id="nameInput" placeholder="Enter Player Name">
         <button onclick="addPlayer()">ADD +</button>
-        <br><br>
+        <br>
+        <div>
+            <label style="font-weight: bold; color: var(--secondary);">Time Limit (Seconds):</label><br>
+            <input type="number" id="timeInput" class="timer-input" value="60" min="10">
+        </div>
+        <br>
         <button id="startBtn" onclick="startGame()" disabled>LOADING...</button>
     </div>
 
@@ -43,60 +61,111 @@
     </div>
 
     <div id="game-screen" style="display:none;">
-        <div class="speaker-box">📢 First Speaker: <span id="first-speaker">?</span></div>
+        <div class="speaker-box">📢 First Speaker:<br><span id="first-speaker" style="font-size: 30px; color: white; text-shadow: 2px 2px 0 #000;">?</span></div>
         <div id="timer">60</div>
-        <button onclick="revealImposter()" style="background: var(--accent); box-shadow: 0 6px 0 #218c74;">REVEAL NOW!</button>
+        <button id="reveal-btn" class="btn-accent" onclick="revealImposter()" style="font-size: 22px;">REVEAL NOW!</button>
     </div>
 
     <div id="final-screen" style="display:none;">
         <h2 id="winner-msg"></h2>
-        <button onclick="location.reload()">PLAY AGAIN 🔄</button>
+        
+        <div style="background: #2F3542; padding: 15px; border-radius: 15px; margin: 20px 0; border: 2px solid #57606f;">
+            <h3 style="margin-top: 0; color: white;">Who Won?</h3>
+            <button class="btn-secondary" onclick="awardPoints('imposter')" style="width: 90%; font-size: 16px;">
+                🕵️ Imposter Fooled 'Em (+2 Pts)
+            </button>
+            <button class="btn-blue" onclick="awardPoints('group')" style="width: 90%; font-size: 16px;">
+                👥 Group Caught 'Em (+1 Pt Each)
+            </button>
+            <button onclick="awardPoints('tie')" style="width: 90%; background: #57606f; box-shadow: 0 6px 0 #2f3542; font-size: 16px;">
+                🤷 Nobody / Tie (0 Pts)
+            </button>
+        </div>
     </div>
 </div>
 
 <script>
     let players = [];
+    let scores = {};
     let wordList = [];
     let gameState = { imposter: "", word: "", index: 0 };
+    let countdownInterval;
 
-    // ✅ Loads common words from a CDN or your local words_alpha.txt
-    // For "Common Only", it filters for frequent, 5-8 letter words
+    const fallbackWords = [
+        "AIRPLANE", "HOSPITAL", "BEACH", "SCHOOL", "BANK", "CASINO", "CIRCUS", 
+        "HOTEL", "RESTAURANT", "SUPERMARKET", "THEATER", "ZOO", "LIBRARY", 
+        "MUSEUM", "FACTORY", "PIRATE SHIP", "SUBMARINE", "SPACE STATION", 
+        "POLICE STATION", "FIREHOUSE", "MOUNTAIN", "DESERT", "JUNGLE"
+    ];
+
     fetch('words_alpha.txt')
         .then(r => r.text())
         .then(text => {
             const all = text.split(/\r?\n/).map(w => w.trim());
-            // Filter to remove obscure words: keep only words between 4-7 characters
-            wordList = all.filter(w => w.length >= 4 && w.length <= 7);
-            document.getElementById('status').innerText = "✅ " + wordList.length.toLocaleString() + " Easy Words Loaded!";
-            const btn = document.getElementById('startBtn');
-            btn.disabled = false;
-            btn.innerText = "START PARTY! 🎉";
+            wordList = all.filter(w => w.length >= 4 && w.length <= 8);
+            if (wordList.length === 0) throw new Error("File empty");
+            setupGameReady("✅ " + wordList.length.toLocaleString() + " Words Loaded!");
+        })
+        .catch(err => {
+            console.log("Could not load words_alpha.txt. Using fallback words.");
+            wordList = fallbackWords;
+            setupGameReady("⚠️ Used Fallback Word List");
         });
+
+    function setupGameReady(message) {
+        document.getElementById('status').innerText = message;
+        const btn = document.getElementById('startBtn');
+        btn.disabled = false;
+        btn.innerText = "START PARTY! 🎉";
+    }
+
+    document.getElementById("nameInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            addPlayer();
+        }
+    });
+
+    function renderPlayers() {
+        const list = document.getElementById('name-list');
+        list.innerHTML = "";
+        
+        // Sort players by score (highest to lowest) for a cool leaderboard effect
+        const sortedPlayers = [...players].sort((a, b) => scores[b] - scores[a]);
+        
+        sortedPlayers.forEach(name => {
+            const span = document.createElement('span');
+            span.className = "player-tag";
+            span.innerHTML = `${name} <span class="score">${scores[name]}</span>`;
+            list.appendChild(span);
+        });
+    }
 
     function addPlayer() {
         const input = document.getElementById('nameInput');
-        if(input.value.trim()){
-            players.push(input.value.trim());
-            const span = document.createElement('span');
-            span.style = "background:#444; padding:5px 10px; margin:3px; border-radius:10px; display:inline-block; border:1px solid var(--primary);";
-            span.innerText = input.value.trim();
-            document.getElementById('name-list').appendChild(span);
+        const name = input.value.trim().toUpperCase();
+        if(name && !players.includes(name)){
+            players.push(name);
+            scores[name] = 0; // Give them 0 points to start
+            renderPlayers();
             input.value = "";
         }
     }
 
     function startGame() {
-        if(players.length < 3) return alert("Need 3+ players!");
+        if(players.length < 3) return alert("You need at least 3 players to play!");
+        
         gameState.imposter = players[Math.floor(Math.random() * players.length)];
         gameState.word = wordList[Math.floor(Math.random() * wordList.length)].toUpperCase();
         gameState.index = 0;
+        
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('reveal-screen').style.display = 'block';
         updateTurn();
     }
 
     function updateTurn() {
-        document.getElementById('turn-name').innerText = "Pass to " + players[gameState.index] + "!";
+        document.getElementById('turn-name').innerText = "Pass phone to: " + players[gameState.index];
         document.getElementById('word-display').style.display = 'none';
         document.getElementById('tap-msg').style.display = 'block';
     }
@@ -105,8 +174,10 @@
         const display = document.getElementById('word-display');
         const msg = document.getElementById('tap-msg');
         const isImposter = players[gameState.index] === gameState.imposter;
+        
         if(display.style.display === 'none'){
             display.innerText = isImposter ? "🕵️ YOU ARE THE IMPOSTER" : "WORD: " + gameState.word;
+            display.style.color = isImposter ? "var(--secondary)" : "var(--accent)";
             display.style.display = 'block';
             msg.style.display = 'none';
         } else {
@@ -127,22 +198,48 @@
     function startRound() {
         document.getElementById('reveal-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
+        
         document.getElementById('first-speaker').innerText = players[Math.floor(Math.random() * players.length)];
         
-        let time = 60;
-        const countdown = setInterval(() => {
+        let time = parseInt(document.getElementById('timeInput').value) || 60;
+        document.getElementById('timer').innerText = time;
+        
+        countdownInterval = setInterval(() => {
             time--;
-            document.getElementById('timer').innerText = time;
-            if(time <= 0) { clearInterval(countdown); revealImposter(); }
+            if(time > 0) {
+                document.getElementById('timer').innerText = time;
+            } else {
+                clearInterval(countdownInterval);
+                document.getElementById('timer').innerText = "TIME'S UP!";
+            }
         }, 1000);
     }
 
     function revealImposter() {
+        clearInterval(countdownInterval);
         document.getElementById('game-screen').style.display = 'none';
         document.getElementById('final-screen').style.display = 'block';
         document.getElementById('winner-msg').innerHTML = 
-            `THE IMPOSTER WAS:<br><span style="font-size:45px; color:var(--primary);">${gameState.imposter}</span><br><br>` +
-            `SECRET WORD: ${gameState.word}`;
+            `THE IMPOSTER WAS:<br><span style="font-size:45px; color:var(--secondary); text-shadow: 2px 2px 0 #000;">${gameState.imposter}</span><br><br>` +
+            `<span style="font-size: 24px; color: #aaa;">SECRET WORD WAS:</span><br><span style="font-size: 35px; color: var(--accent);">${gameState.word}</span>`;
+    }
+
+    function awardPoints(winner) {
+        if (winner === 'imposter') {
+            scores[gameState.imposter] += 2;
+        } else if (winner === 'group') {
+            players.forEach(p => {
+                if (p !== gameState.imposter) scores[p] += 1;
+            });
+        }
+        
+        // Go back to the setup screen for the next round
+        renderPlayers();
+        document.getElementById('final-screen').style.display = 'none';
+        document.getElementById('setup-screen').style.display = 'block';
+        
+        // Change button text to indicate it's not the first game
+        document.getElementById('startBtn').innerText = "START NEXT ROUND! 🔄";
     }
 </script>
 </body>
