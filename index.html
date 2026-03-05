@@ -2,244 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Web Document Scanner</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
-    <script async src="https://docs.opencv.org/4.7.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
-    
-    <script src="https://cdn.jsdelivr.net/gh/ColonelParrot/jscanify@master/src/jscanify.min.js"></script>
-
+    <title>Imposter Game</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background-color: var(--bg);
-            margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .container {
-            background: white; padding: 2rem; border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 100%; max-width: 400px; text-align: center;
-        }
-        .btn {
-            background-color: var(--primary); color: white;
-            padding: 14px 24px; border: none; border-radius: 0.5rem;
-            font-size: 1rem; font-weight: bold; cursor: pointer;
-            width: 100%; margin-bottom: 15px; transition: 0.2s;
-        }
-        .btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
-        .btn-success { background-color: #059669; }
-        
-        #status { 
-            margin: 15px 0; font-weight: bold; color: #d97706; 
-            padding: 10px; background: #fef3c7; border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        
-        /* Scanned Pages Gallery */
-        .gallery {
-            display: grid; grid-template-columns: repeat(3, 1fr);
-            gap: 10px; margin-top: 20px;
-        }
-        .page-preview {
-            width: 100%; aspect-ratio: 1 / 1.4; object-fit: cover;
-            border: 2px solid #e2e8f0; border-radius: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        /* Hidden canvas for background image processing */
-        #processing-canvas { display: none; }
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+        .card { background: #222; border: 2px solid #444; border-radius: 15px; padding: 40px; margin: 20px auto; max-width: 300px; cursor: pointer; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        #word-display { font-size: 24px; font-weight: bold; color: #ffeb3b; display: none; }
     </style>
 </head>
 <body>
+    <h1>Who is the Imposter?</h1>
+    <div id="setup">
+        <input type="number" id="playerCount" value="4" min="3"> Players<br><br>
+        <button onclick="startGame()">Start New Game</button>
+    </div>
 
-<div class="container">
-    <h2>Scanner Pro 📸</h2>
-    
-    <div id="status">⏳ Loading Vision Engine (Please wait 3-5 seconds)...</div>
+    <div id="game-area" style="display:none;">
+        <h2 id="player-turn">Player 1's Turn</h2>
+        <div class="card" onclick="toggleWord()">
+            <div id="tap-instruction">TAP TO REVEAL</div>
+            <div id="word-display">SECRET WORD</div>
+        </div>
+        <button id="next-btn" onclick="nextPlayer()">Next Player</button>
+    </div>
 
-    <input type="file" accept="image/*" capture="environment" id="camera-input" style="display: none;" disabled />
+    <script>
+        let words = [];
+        let gameData = { players: [], currentPlayer: 0, secretWord: "" };
 
-    <button id="capture-btn" class="btn" onclick="document.getElementById('camera-input').click()" disabled>
-        + Scan New Page
-    </button>
-    
-    <button id="pdf-btn" class="btn btn-success" onclick="generatePDF()" style="display: none;">
-        📥 Download as PDF
-    </button>
+        // Fetch 10,000 common words from a public JS library/CDN
+        fetch('https://raw.githubusercontent.com')
+            .then(res => res.text())
+            .then(data => {
+                words = data.split('\n').filter(w => w.length > 3);
+                console.log("Words loaded!");
+            });
 
-    <h3>Scanned Pages (<span id="page-count">0</span>)</h3>
-    <div class="gallery" id="gallery"></div>
-</div>
-
-<canvas id="processing-canvas"></canvas>
-
-<script>
-    let scanner;
-    let scannedPages = []; // Stores our final, cropped, filtered pages
-    
-    const statusEl = document.getElementById('status');
-    const captureBtn = document.getElementById('capture-btn');
-    const pdfBtn = document.getElementById('pdf-btn');
-    const cameraInput = document.getElementById('camera-input');
-    const gallery = document.getElementById('gallery');
-    const pageCountEl = document.getElementById('page-count');
-    const processingCanvas = document.getElementById('processing-canvas');
-    const ctx = processingCanvas.getContext('2d');
-
-    // 1. Initialize the Computer Vision Engine
-    function onOpenCvReady() {
-        setTimeout(() => {
-            scanner = new jscanify();
-            statusEl.innerText = "✅ Engine Ready! You can scan now.";
-            statusEl.style.color = "#059669";
-            statusEl.style.background = "#d1fae5";
-            captureBtn.disabled = false;
-            cameraInput.disabled = false;
-        }, 1500);
-    }
-
-    // 2. Handle Photo Capture
-    cameraInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        statusEl.innerText = "⚙️ Analyzing and processing image...";
-        statusEl.style.color = "#2563eb";
-        statusEl.style.background = "#dbeafe";
-        
-        const img = new Image();
-        img.onload = function() {
-            // Scale down slightly for performance while maintaining clarity
-            const MAX_WIDTH = 1200;
-            let width = img.width;
-            let height = img.height;
+        function startGame() {
+            const count = document.getElementById('playerCount').value;
+            const imposterIndex = Math.floor(Math.random() * count);
+            const secretWord = words[Math.floor(Math.random() * words.length)].toUpperCase();
             
-            if (width > MAX_WIDTH) {
-                height = Math.round(height * (MAX_WIDTH / width));
-                width = MAX_WIDTH;
-            }
+            gameData = {
+                players: Array.from({length: count}, (_, i) => i === imposterIndex),
+                currentPlayer: 0,
+                secretWord: secretWord
+            };
 
-            processingCanvas.width = width;
-            processingCanvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // Give the browser a frame to update the UI, then process
-            setTimeout(() => processImage(), 100);
-        };
-        img.src = URL.createObjectURL(file);
-    });
-
-    // 3. The Core Magic: Auto-Crop and Filter (WITH FALLBACK)
-    function processImage() {
-        let finalCanvas;
-        let successfullyCropped = true;
-
-        try {
-            // A. Try to AUTO-CROP: Find the paper and flatten the perspective
-            finalCanvas = scanner.extractPaper(processingCanvas, processingCanvas.width, processingCanvas.height);
-            
-            // If jscanify fails quietly and returns an empty canvas, trigger the fallback
-            if (!finalCanvas || finalCanvas.width === 0) {
-                throw new Error("Could not detect paper edges.");
-            }
-        } catch (error) {
-            console.warn("Auto-crop failed, falling back to full image.");
-            successfullyCropped = false;
-            
-            // FALLBACK: Use the full uncropped image instead
-            finalCanvas = document.createElement('canvas');
-            finalCanvas.width = processingCanvas.width;
-            finalCanvas.height = processingCanvas.height;
-            finalCanvas.getContext('2d').drawImage(processingCanvas, 0, 0);
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('game-area').style.display = 'block';
+            updateUI();
         }
 
-        try {
-            // B. FILTER: Apply "CamScanner" high-contrast B&W effect
-            finalCanvas = applyScannerFilter(finalCanvas);
-            
-            // C. SAVE: Convert the final canvas to a high-quality JPEG
-            const base64Img = finalCanvas.toDataURL('image/jpeg', 0.9);
-            scannedPages.push(base64Img);
-            
-            // D. UPDATE UI
-            updateGallery(base64Img);
-            pdfBtn.style.display = 'block'; 
+        function toggleWord() {
+            const display = document.getElementById('word-display');
+            const instruction = document.getElementById('tap-instruction');
+            const isImposter = gameData.players[gameData.currentPlayer];
 
-            if (successfullyCropped) {
-                statusEl.innerText = `✅ Page ${scannedPages.length} scanned and auto-cropped!`;
-                statusEl.style.color = "#059669";
-                statusEl.style.background = "#d1fae5";
+            if (display.style.display === 'none') {
+                display.innerText = isImposter ? "YOU ARE THE IMPOSTER" : gameData.secretWord;
+                display.style.display = 'block';
+                instruction.style.display = 'none';
             } else {
-                statusEl.innerText = `⚠️ Page ${scannedPages.length} added. Edges not found - try a darker table next time!`;
-                statusEl.style.color = "#d97706";
-                statusEl.style.background = "#fef3c7";
+                display.style.display = 'none';
+                instruction.style.display = 'block';
             }
-
-        } catch (filterError) {
-            console.error(filterError);
-            statusEl.innerText = "❌ Processing failed entirely.";
-            statusEl.style.color = "#dc2626";
-            statusEl.style.background = "#fee2e2";
         }
-    }
 
-    // 4. Custom High-Contrast Grayscale Filter (The "Scanner" Look)
-    function applyScannerFilter(canvas) {
-        const context = canvas.getContext('2d');
-        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-            // Convert to grayscale
-            let brightness = (data[i] * 0.299) + (data[i + 1] * 0.587) + (data[i + 2] * 0.114);
-            
-            // Increase contrast heavily to make background white and text dark
-            brightness = (brightness - 128) * 1.5 + 128;
-            if (brightness > 255) brightness = 255;
-            if (brightness < 0) brightness = 0;
-
-            data[i] = brightness;     // Red
-            data[i + 1] = brightness; // Green
-            data[i + 2] = brightness; // Blue
+        function nextPlayer() {
+            gameData.currentPlayer++;
+            if (gameData.currentPlayer >= gameData.players.length) {
+                alert("All players have seen their roles! Start discussing.");
+                location.reload(); 
+            } else {
+                document.getElementById('word-display').style.display = 'none';
+                document.getElementById('tap-instruction').style.display = 'block';
+                updateUI();
+            }
         }
-        context.putImageData(imgData, 0, 0);
-        return canvas;
-    }
 
-    // 5. Update UI Gallery
-    function updateGallery(imgSrc) {
-        const imgEl = document.createElement('img');
-        imgEl.src = imgSrc;
-        imgEl.className = 'page-preview';
-        gallery.appendChild(imgEl);
-        pageCountEl.innerText = scannedPages.length;
-    }
-
-    // 6. Generate the Final PDF
-    function generatePDF() {
-        statusEl.innerText = "⏳ Generating PDF...";
-        
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, Millimeters, A4
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = doc.internal.pageSize.getHeight();
-
-        scannedPages.forEach((pageBase64, index) => {
-            if (index > 0) doc.addPage();
-            
-            // Add image to cover the full A4 page
-            doc.addImage(pageBase64, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        });
-
-        doc.save('Scanned_Document.pdf');
-        
-        statusEl.innerText = "✅ PDF Downloaded Successfully!";
-    }
-</script>
-
+        function updateUI() {
+            document.getElementById('player-turn').innerText = `Player ${gameData.currentPlayer + 1}'s Turn`;
+        }
+    </script>
 </body>
 </html>
