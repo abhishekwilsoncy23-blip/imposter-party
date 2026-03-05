@@ -2,88 +2,148 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imposter Game</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
-        .card { background: #222; border: 2px solid #444; border-radius: 15px; padding: 40px; margin: 20px auto; max-width: 300px; cursor: pointer; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
-        #word-display { font-size: 24px; font-weight: bold; color: #ffeb3b; display: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1a1a2e; color: #e94560; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: #16213e; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        input { padding: 10px; border-radius: 5px; border: none; width: 70%; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; background: #e94560; color: white; border: none; border-radius: 5px; font-weight: bold; margin: 5px; }
+        .card { background: #0f3460; border: 3px dashed #e94560; border-radius: 15px; padding: 50px; margin: 20px auto; cursor: pointer; min-height: 50px; }
+        #word-display { font-size: 28px; font-weight: bold; color: #fff; display: none; }
+        #timer { font-size: 40px; color: #00d2ff; margin: 20px; }
+        .player-list { text-align: left; background: #0f3460; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h1>Who is the Imposter?</h1>
-    <div id="setup">
-        <input type="number" id="playerCount" value="4" min="3"> Players<br><br>
-        <button onclick="startGame()">Start New Game</button>
+
+<div class="container">
+    <h1>🕵️ Imposter</h1>
+
+    <!-- STEP 1: PLAYER ENTRY -->
+    <div id="setup-screen">
+        <div class="player-list" id="display-names">No players added yet.</div>
+        <input type="text" id="nameInput" placeholder="Enter Player Name">
+        <button onclick="addPlayer()">Add</button>
+        <br><br>
+        <label>Discussion Time (sec): </label>
+        <input type="number" id="timerInput" value="60" style="width: 50px;">
+        <br>
+        <button onclick="startGame()" style="background: #0fcc7c; width: 100%;">START GAME</button>
     </div>
 
-    <div id="game-area" style="display:none;">
-        <h2 id="player-turn">Player 1's Turn</h2>
-        <div class="card" onclick="toggleWord()">
-            <div id="tap-instruction">TAP TO REVEAL</div>
-            <div id="word-display">SECRET WORD</div>
+    <!-- STEP 2: ROLE REVEAL -->
+    <div id="reveal-screen" style="display:none;">
+        <h2 id="turn-name">Player Name</h2>
+        <div class="card" onclick="toggleSecret()">
+            <div id="tap-msg">TAP TO REVEAL</div>
+            <div id="word-display">WORD</div>
         </div>
-        <button id="next-btn" onclick="nextPlayer()">Next Player</button>
+        <button id="next-btn" onclick="nextPlayer()">DONE, NEXT PLAYER</button>
     </div>
 
-    <script>
-        let words = [];
-        let gameData = { players: [], currentPlayer: 0, secretWord: "" };
+    <!-- STEP 3: DISCUSSION & TIMER -->
+    <div id="game-screen" style="display:none;">
+        <h2>Discuss! Who is lying?</h2>
+        <div id="timer">60</div>
+        <button onclick="revealImposter()" id="reveal-btn" style="background: #533483;">REVEAL IMPOSTER NOW</button>
+    </div>
 
-        // Fetch 10,000 common words from a public JS library/CDN
-        fetch('https://raw.githubusercontent.com')
-            .then(res => res.text())
-            .then(data => {
-                words = data.split('\n').filter(w => w.length > 3);
-                console.log("Words loaded!");
-            });
+    <!-- STEP 4: FINAL REVEAL -->
+    <div id="final-screen" style="display:none;">
+        <h2 id="winner-msg"></h2>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+</div>
 
-        function startGame() {
-            const count = document.getElementById('playerCount').value;
-            const imposterIndex = Math.floor(Math.random() * count);
-            const secretWord = words[Math.floor(Math.random() * words.length)].toUpperCase();
-            
-            gameData = {
-                players: Array.from({length: count}, (_, i) => i === imposterIndex),
-                currentPlayer: 0,
-                secretWord: secretWord
-            };
+<script>
+    let players = [];
+    let wordList = ["APPLE", "EIFFEL TOWER", "HOSPITAL", "SUSHI", "YOUTUBE", "ASTRONAUT", "CAMPING", "TORNADO", "CHURCH", "AIRPORT"];
+    let gameState = { imposterName: "", secretWord: "", currentIdx: 0, timer: 60 };
 
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('game-area').style.display = 'block';
-            updateUI();
+    // Fetching more words (CORS Friendly Source)
+    fetch('https://raw.githubusercontent.com')
+        .then(r => r.text()).then(t => {
+            let fetched = t.split('\n').filter(w => w.length > 4 && w.length < 10);
+            if(fetched.length > 100) wordList = fetched;
+        });
+
+    function addPlayer() {
+        const input = document.getElementById('nameInput');
+        if (input.value.trim() !== "") {
+            players.push(input.value.trim());
+            document.getElementById('display-names').innerText = "Players: " + players.join(", ");
+            input.value = "";
         }
+    }
 
-        function toggleWord() {
-            const display = document.getElementById('word-display');
-            const instruction = document.getElementById('tap-instruction');
-            const isImposter = gameData.players[gameData.currentPlayer];
+    function startGame() {
+        if (players.length < 3) return alert("Need at least 3 players!");
+        
+        const imposterIdx = Math.floor(Math.random() * players.length);
+        gameState.imposterName = players[imposterIdx];
+        gameState.secretWord = wordList[Math.floor(Math.random() * wordList.length)].toUpperCase();
+        gameState.currentIdx = 0;
+        gameState.timer = document.getElementById('timerInput').value;
 
-            if (display.style.display === 'none') {
-                display.innerText = isImposter ? "YOU ARE THE IMPOSTER" : gameData.secretWord;
-                display.style.display = 'block';
-                instruction.style.display = 'none';
-            } else {
-                display.style.display = 'none';
-                instruction.style.display = 'block';
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('reveal-screen').style.display = 'block';
+        updateTurn();
+    }
+
+    function updateTurn() {
+        document.getElementById('turn-name').innerText = players[gameState.currentIdx] + ", look at your role:";
+        document.getElementById('word-display').style.display = 'none';
+        document.getElementById('tap-msg').style.display = 'block';
+    }
+
+    function toggleSecret() {
+        const display = document.getElementById('word-display');
+        const msg = document.getElementById('tap-msg');
+        
+        if (display.style.display === 'none') {
+            const isImposter = players[gameState.currentIdx] === gameState.imposterName;
+            display.innerText = isImposter ? "🕵️ YOU ARE THE IMPOSTER" : "WORD: " + gameState.secretWord;
+            display.style.display = 'block';
+            msg.style.display = 'none';
+        } else {
+            display.style.display = 'none';
+            msg.style.display = 'block';
+        }
+    }
+
+    function nextPlayer() {
+        gameState.currentIdx++;
+        if (gameState.currentIdx >= players.length) {
+            startDiscussion();
+        } else {
+            updateTurn();
+        }
+    }
+
+    function startDiscussion() {
+        document.getElementById('reveal-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        
+        let timeLeft = gameState.timer;
+        const timerDiv = document.getElementById('timer');
+        
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerDiv.innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                revealImposter();
             }
-        }
+        }, 1000);
+    }
 
-        function nextPlayer() {
-            gameData.currentPlayer++;
-            if (gameData.currentPlayer >= gameData.players.length) {
-                alert("All players have seen their roles! Start discussing.");
-                location.reload(); 
-            } else {
-                document.getElementById('word-display').style.display = 'none';
-                document.getElementById('tap-instruction').style.display = 'block';
-                updateUI();
-            }
-        }
+    function revealImposter() {
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('final-screen').style.display = 'block';
+        document.getElementById('winner-msg').innerHTML = `The Imposter was:<br><span style="font-size:40px; color:#fff;">${gameState.imposterName}</span><br><br>The word was: ${gameState.secretWord}`;
+    }
+</script>
 
-        function updateUI() {
-            document.getElementById('player-turn').innerText = `Player ${gameData.currentPlayer + 1}'s Turn`;
-        }
-    </script>
 </body>
 </html>
